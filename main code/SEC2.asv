@@ -1,0 +1,61 @@
+% Load the data
+data = load();
+X = data.XY(1, :);
+Y = data.XY(2, :);
+%%
+% Calculate histogram bin edges using Scott's rule
+[~, bins_X] = histcounts(X, 120,'Normalization', 'probability');
+[~, bins_Y] = histcounts(Y, 120,'Normalization', 'probability');
+
+% Calculate 2D histogram
+[H, xedges, yedges] = histcounts2(X, Y, bins_X, bins_Y, 'Normalization', 'probability');
+
+% Create meshgrid for plotting (using bin centers)
+xcenters = (xedges(1:end-1) + xedges(2:end)) / 2;
+ycenters = (yedges(1:end-1) + yedges(2:end)) / 2;
+[xpos, ypos] = meshgrid(xcenters, ycenters);
+
+% Plot using surf
+figure;
+surf(xpos, ypos, H');  % Use H directly, no need to flatten or filter
+xlabel('X');
+ylabel('Y');
+zlabel('Probability');
+title('Joint Probability Distribution P(X, Y)');
+view(3); % Set 3D view
+
+
+
+%%
+function rvType = RVType(RV)
+    uniqueValues = unique(RV);
+    ratioUnique = length(uniqueValues) / length(RV);
+    threshold = 0.05;  % Adjust threshold as needed
+    if ratioUnique > threshold
+        rvType = 'Continuous';
+    else
+        rvType = 'Discrete';
+    end
+    fprintf('Ratio of unique values for %s: %.4f\n', inputname(1), ratioUnique);
+    fprintf('Determined RV type: %s\n', rvType);
+
+end
+
+function [pdf, x] = ksDen(data, bandwidth)
+    min_x = min(data) - 3 * bandwidth;
+    max_x = max(data) + 3 * bandwidth;
+    x_points = ceil(sqrt(length(data)));  % Number of points for evaluation
+    x = linspace(min_x, max_x, x_points);
+    pdf = zeros(size(x));
+    n = length(data);
+    for i = 1:length(x)
+        for j = 1:n
+            pdf(i) = pdf(i) + gaussianKernel((x(i) - data(j)) / bandwidth);
+        end
+        pdf(i) = pdf(i) / (n * bandwidth);
+    end
+end
+
+function K = gaussianKernel(x)
+    K = (1 / sqrt(2 * pi)) * exp(-0.5 * x.^2);
+end
